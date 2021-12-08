@@ -37,3 +37,4 @@ print('total (day 18):', sum(d80))
 
 d256 = age_school(school, 256-80)
 print('total (day 256):', sum(d256))
+print(school)
