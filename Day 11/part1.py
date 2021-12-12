@@ -5,10 +5,13 @@ import sys
 
 os.system('')
 
+SPEED = 0.2 # change the speed here - 0.01 is fast, 0.5 is slow
+
 RED = "\033[31;1m"
 WHITE = "\033[32;1m"
 REDBG = "\033[41;1m"
 ENDC = "\033[m"
+CYAN = "\033[96;1m"
 
 parser = argparse.ArgumentParser('Provide octopus energy file path')
 parser.add_argument('octos', help='A path to a file with octopus energy data')
@@ -104,7 +107,7 @@ def display_octos(os,as_string=False,flush=False,title='',test_os=None):
         else:
             print(row)
     if(flush):
-        time.sleep(0.03)
+        time.sleep(SPEED)
         print('\033[F'*(len(os)+2))
 
 def energise_neighbours(os, pos):
@@ -128,64 +131,100 @@ def flash(octos, pos):
 
 os.system('clear')
 
-'''
-for i in range(0,len(octostates)):
-    print('\nState:',i)
-    for o in octostates[i]:
-        print(' '.join([str(x) for x in o]))
-print()
-'''
 print()
 
 total_flashes = 0
+step_flashes = []
 
 started_with = octos.copy()
 for step in range(1, steps_to_take+1):
     #display_octos(octos,True,True,' '*30)
     # part 1: increase every octo based on current numbers
-    above_10 = 0
+    to_flash = []
     for y in range(0,len(octos)):
         for x in range(0,len(octos[y])):
             octos[y][x] += 1
             if octos[y][x] > 9:
-                above_10 += 1
-    display_octos(octos,True,True,'Step {} p1 - iterating    '.format(str(step)))
+                #above_9 += 1
+                to_flash.append([x,y])
+    display_octos(octos,True,True,'Step {} p1 - iterating         '.format(str(step)))
+
+    # we now have the number of octos to flash (above_9)
 
     # part 2: let's make them *flash* 
     ### WE HAVE TO RUN THIS UNTIL THERE ARE NO MORE FLASHES LEFT ###
     flashes = True
+    if len(to_flash) == 0:
+        flashes = False # there are no octos to flash
+    flashed = []
+    fn = 0
+    while flashes:
+        flashing = to_flash.copy()
+        for pos in flashing:
+            if pos not in flashed:
+                energise_neighbours(octos, pos)
+                flashed.append(pos)
+
+        # now do any more need to flash?
+        for y in range(0,len(octos)):
+            for x in range(0,len(octos[y])):
+                pos = [x,y]
+                if octos[y][x] > 9 and pos not in flashed:
+                    to_flash.append(pos)
+
+        display_octos(octos,True,True,'Step {} p2 - ' + CYAN + 'flashing iter {}    '.format(str(step), fn) + ENDC)
+        fn += 1
+
+        if len(to_flash) == len(flashed):
+            flashes = False 
+            # should end the loop???
+        else:
+            flashes = True
+
+    step_flashes.append(len(flashed))
+
+    total_flashes = sum(step_flashes)
+    sys.stdout.write('\033[E'*12)
+    sys.stdout.write('Flashes:' + str(total_flashes))
+    sys.stdout.write('\033[F'*12)
+
+    
+    '''
+    flashes = True
     # count the number of numbers above 10
     fn = 0
-    if above_10 == 0:
+    if above_9 == 0:
         flashes = False # NO flashes needed
     flashed = []
     while flashes:
         flashes = False
+        new_above_9 = 0
         for y2 in range(0,len(octos)):
             for x2 in range(0,len(octos[y2])):
                 sformat = '{}-{}'.format(str(x2),str(y2))
+                sys.stdout.write('\033[E'*13)
+                sys.stdout.write('checking:' + sformat)
+                sys.stdout.write('\033[F'*13)
+                time.sleep(0.01)
                 if octos[y2][x2] > 9 and not sformat in flashed:
                     flashes = True
                     total_flashes += 1
+                    new_above_9 += 1
                     flashed.append(sformat)
                     energise_neighbours(octos, [x2,y2])
-        display_octos(octos,True,True,'Step {} p2 - flashing {}    '.format(str(step), fn))
         sys.stdout.write('\033[E'*12)
         sys.stdout.write('Flashes:' + str(total_flashes))
         sys.stdout.write('\033[F'*12)
-        
 
-        new_above_10 = 0
-        for n in range(0,len(octos)):
-            for m in range(0,len(octos)):
-                if octos[m][n] > 9:
-                    new_above_10 += 1
-        if new_above_10 == above_10:
+        if new_above_9 == above_9:
             flashes = False
         else:
-            above_10 = new_above_10
+            above_9 = new_above_9
             flashes = True
         fn += 1
+        display_octos(octos,True,True,'Step {} p2 - flashing iter {}    '.format(str(step), fn))
+    step_flashes.append(len(flashed))
+    '''
 
     # part 3: Decrease to zero
     zeroes = False
@@ -194,7 +233,7 @@ for step in range(1, steps_to_take+1):
             if octos[y][x] > 9:
                 zeroes = True
                 octos[y][x] = 0
-    display_octos(octos,True,True,'Step {} p3 - zeroing      '.format(str(step)))
+    display_octos(octos,True,True,'Step {} p3 - zeroing              '.format(str(step)))
 
     # do check if flag True
     if args.check == '1':
@@ -226,3 +265,4 @@ print()
 
 print('Total Flashes:', total_flashes)
 
+print(step_flashes)
